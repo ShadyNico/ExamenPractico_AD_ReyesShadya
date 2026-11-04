@@ -6,6 +6,7 @@ import java.time.LocalDate;
 import java.util.List;
 
 /** Records de entrada/salida del CRUD de content. */
+//un dto permite transportar datos de manera segura entre el clientee y servidor o entre sus capas.
 public final class ContentDtos {
 
     private ContentDtos() {
