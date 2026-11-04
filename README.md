@@ -27,7 +27,7 @@ docker compose up -d          # PostgreSQL con primevideodb (carga db/01_PrimeVi
 ```
 
 - Aplicación: http://localhost:8080. Ábrela en dos ventanas para ver la sincronización.
-- Adminer (cliente web de BD): http://localhost:8081
+- Adminer que es el cliente web de BD: http://localhost:8081
   - Sistema: PostgreSQL
   - Servidor: `postgres`
   - Usuario y contraseña: `postgres` / `postgres`
@@ -102,8 +102,8 @@ Para comparar existe `GET /api/estadisticas/sin-hilos`: hace exactamente el mism
    - Con WebSockets el servidor **empuja** cada cambio confirmado a todos los clientes conectados. La lista se actualiza sola (en ~0.5 s), con aviso de quién hizo el cambio y un historial de eventos.
    - La comunicación pasa de ser solo petición/respuesta iniciada por el cliente a ser bidireccional y en tiempo real.
 2. **¿Qué ventaja dio usar hilos?**
-   - **La petición no se bloquea:** el servidor responde en milisegundos (202) en lugar de dejar al cliente esperando 6 s sin información.
-   - **El cálculo se reparte entre varios núcleos:** con 12 hilos tarda 0.79 s en vez de 6 s (7.65x).
+   - **La petición no se bloquea:** el servidor responde en milisegundos 202 en lugar de dejar al cliente esperando 6 s sin información.
+   - **El cálculo se reparte entre varios núcleos:** con 12 hilos tarda 0.79 s en vez de 6 s.
    - **La aplicación sigue respondiendo:** mientras se procesa, el CRUD responde en ~10–30 ms y el usuario ve el avance de cada hilo en tiempo real.
 3. **Diferencia entre la versión inicial y la mejorada:**
    - La versión inicial es un CRUD aislado por cliente, síncrono y secuencial.
