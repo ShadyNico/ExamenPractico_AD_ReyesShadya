@@ -47,6 +47,45 @@
     </div>
   </section>
 
+  <section class="panel" id="panel-estadisticas">
+    <div class="panel-head">
+      <h2>Estadísticas del catálogo <small>procesamiento concurrente con hilos · /topic/estadisticas</small></h2>
+      <div class="filtros">
+        <label class="en-linea">Hilos
+          <select id="hilos"><option>1</option><option>2</option><option>4</option><option selected>8</option><option>12</option><option>16</option></select>
+        </label>
+        <button id="btn-hilos">▶ Procesar con hilos (segundo plano)</button>
+        <button id="btn-sin-hilos" class="sec">Procesar sin hilos (bloqueante)</button>
+      </div>
+    </div>
+    <p class="nota">Cuenta contenidos por tipo, género, año y rating, calcula duraciones promedio y, para cada uno de los
+      contenidos, busca el más parecido de todo el catálogo (similitud de Jaccard por géneros, directores y reparto ≈ 93 millones de comparaciones).</p>
+    <div id="est-estado" class="est-estado">Sin procesar todavía.</div>
+    <div id="est-progreso" class="progreso oculto">
+      <div class="barra"><div id="est-barra"></div></div>
+      <div id="est-hilos" class="hilos"></div>
+    </div>
+    <div id="est-sonda" class="nota"></div>
+    <div id="est-resultado" class="oculto">
+      <div class="kpis">
+        <div class="kpi"><small>Contenidos</small><b id="r-total"></b></div>
+        <div class="kpi"><small>Películas</small><b id="r-peliculas"></b></div>
+        <div class="kpi"><small>Series</small><b id="r-series"></b></div>
+        <div class="kpi"><small>Duración prom. película</small><b id="r-min"></b></div>
+        <div class="kpi"><small>Temporadas prom. serie</small><b id="r-temp"></b></div>
+        <div class="kpi"><small>Comparaciones</small><b id="r-comp"></b></div>
+      </div>
+      <div class="columnas">
+        <div><h3>Contenidos por género (top 15)</h3><div id="r-generos" class="barras"></div></div>
+        <div><h3>Películas y series por año (últimos 20)</h3><div id="r-anios" class="barras"></div></div>
+      </div>
+      <h3>Contenidos más parecidos (top 10)</h3>
+      <div class="scroll"><table class="tabla"><thead><tr><th>Contenido A</th><th>Contenido B</th><th>Similitud</th><th>En común</th></tr></thead><tbody id="r-similares"></tbody></table></div>
+      <h3>Trabajo de cada hilo</h3>
+      <div class="scroll"><table class="tabla"><thead><tr><th>Hilo</th><th>Contenidos</th><th>Comparaciones</th><th>Tiempo</th></tr></thead><tbody id="r-detalle"></tbody></table></div>
+    </div>
+  </section>
+
   <section class="panel">
     <h2>Eventos en tiempo real <small>WebSocket · /topic/content</small></h2>
     <ul id="eventos" class="lista"><li class="nota vacio">Sin eventos todavía</li></ul>

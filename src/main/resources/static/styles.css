@@ -62,6 +62,29 @@ dialog label { display: flex; flex-direction: column; gap: 4px; font-size: 12px;
 .aviso { position: fixed; right: 20px; bottom: 20px; background: #0b1117; border: 1px solid var(--azul); border-radius: 8px; padding: 10px 14px; max-width: 380px; opacity: 0; transform: translateY(10px); transition: .25s; pointer-events: none; }
 .aviso.visible { opacity: 1; transform: none; }
 
+.oculto { display: none !important; }
+.en-linea { display: flex; align-items: center; gap: 6px; color: var(--suave); font-size: 12px; }
+.est-estado { margin: 10px 0; padding: 10px 12px; border-radius: 8px; background: #0f171e; border: 1px solid var(--borde); }
+.est-estado.ok { border-color: var(--verde); }
+.est-estado.trabajando { border-color: var(--azul); }
+.barra { height: 14px; background: #0f171e; border: 1px solid var(--borde); border-radius: 99px; overflow: hidden; }
+.barra > div { height: 100%; width: 0; background: linear-gradient(90deg, #00a8e1, #2fbf71); transition: width .2s; }
+.hilos { display: grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 6px; margin-top: 8px; }
+.hilo { font-size: 11px; color: var(--suave); }
+.hilo .barra { height: 8px; margin-top: 2px; }
+.kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 8px; margin: 12px 0; }
+.kpi { background: #0f171e; border: 1px solid var(--borde); border-radius: 8px; padding: 8px 10px; }
+.kpi small { display: block; color: var(--suave); font-size: 12px; }
+.kpi b { font-size: 20px; font-variant-numeric: tabular-nums; }
+.columnas { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 16px; }
+h3 { font-size: 13px; color: var(--suave); font-weight: 600; margin: 14px 0 8px; }
+.barras { display: grid; gap: 3px; }
+.fila-barra { display: grid; grid-template-columns: 150px 1fr 48px; gap: 8px; align-items: center; font-size: 12px; }
+.fila-barra .b { height: 12px; background: var(--azul); border-radius: 3px; }
+.fila-barra .b.s { background: var(--ambar); }
+.fila-barra span:first-child { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.fila-barra .doble { display: flex; gap: 1px; }
+
 @media (max-width: 600px) {
   header, main { padding-left: 16px; padding-right: 16px; }
 }

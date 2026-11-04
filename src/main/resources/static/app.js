@@ -117,6 +117,7 @@ stomp.onConnect = () => {
   $('#ws-estado').className = 'pill on';
   stomp.subscribe('/topic/content', (m) => alCambio(JSON.parse(m.body)));
   stomp.subscribe('/topic/clientes', (m) => mostrarClientes(JSON.parse(m.body)));
+  stomp.subscribe('/topic/estadisticas', (m) => alEstadistica(JSON.parse(m.body)));
   fetch('api/clientes').then((r) => r.json()).then(mostrarClientes);
   cargar();                                            // al (re)conectar se sincroniza el estado
 };
@@ -154,3 +155,121 @@ function avisar(texto) {
   clearTimeout(tAviso);
   tAviso = setTimeout(() => a.classList.remove('visible'), 4000);
 }
+
+// =====================================================================
+// Etapa 3: procesamiento con hilos. El servidor responde 202 al instante
+// y el progreso/resultado llegan por WebSocket (/topic/estadisticas).
+// =====================================================================
+const fmt = (n) => Number(n).toLocaleString('es');
+const seg = (ms) => (ms / 1000).toFixed(2) + ' s';
+let sonda = null;
+
+// Mientras se procesa, se consulta el CRUD cada 300 ms para medir si la app sigue respondiendo
+function iniciarSonda() {
+  const tiempos = [];
+  detenerSonda();
+  sonda = setInterval(async () => {
+    const t0 = performance.now();
+    await fetch('api/content?tamanio=5&pagina=' + Math.floor(Math.random() * 50));
+    tiempos.push(performance.now() - t0);
+    const prom = tiempos.reduce((a, b) => a + b, 0) / tiempos.length;
+    $('#est-sonda').textContent = `CRUD durante el procesamiento: ${tiempos.length} consultas a /api/content · ` +
+      `promedio ${prom.toFixed(1)} ms · máximo ${Math.max(...tiempos).toFixed(1)} ms (la aplicación sigue respondiendo)`;
+  }, 300);
+}
+function detenerSonda() { clearInterval(sonda); sonda = null; }
+
+function estado(texto, clase) {
+  $('#est-estado').innerHTML = texto;
+  $('#est-estado').className = 'est-estado ' + (clase || '');
+}
+
+$('#btn-hilos').onclick = async () => {
+  const hilos = $('#hilos').value;
+  $('#est-resultado').classList.add('oculto');
+  iniciarSonda();
+  const t0 = performance.now();
+  const r = await fetch('api/estadisticas?hilos=' + hilos, { method: 'POST' });
+  const ms = performance.now() - t0;
+  const d = await r.json();
+  if (!r.ok) { detenerSonda(); estado('⚠ ' + esc(d.detail || 'Error'), ''); return; }
+  estado(`⏳ El servidor respondió <b>HTTP ${r.status}</b> en <b>${ms.toFixed(0)} ms</b> (atendido por <code>${esc(d.hiloPeticion)}</code>).
+    El trabajo <code>${esc(d.jobId)}</code> se procesa en segundo plano con <b>${d.hilos} hilos</b>; el progreso llega por WebSocket.`, 'trabajando');
+};
+
+$('#btn-sin-hilos').onclick = async () => {
+  $('#est-resultado').classList.add('oculto');
+  $('#est-progreso').classList.add('oculto');
+  $('#btn-sin-hilos').disabled = $('#btn-hilos').disabled = true;
+  estado('⏳ Esperando la respuesta del servidor... (versión sin hilos: no hay progreso, la petición queda bloqueada hasta terminar)', 'trabajando');
+  iniciarSonda();
+  const t0 = performance.now();
+  const r = await fetch('api/estadisticas/sin-hilos');
+  const ms = performance.now() - t0;
+  detenerSonda();
+  $('#btn-sin-hilos').disabled = $('#btn-hilos').disabled = false;
+  const res = await r.json();
+  estado(`✔ Versión <b>sin hilos</b>: la petición HTTP estuvo bloqueada <b>${seg(ms)}</b> hasta recibir el resultado.
+    Todo se calculó secuencialmente en <code>${esc(res.hiloCoordinador)}</code> · cálculo ${seg(res.msProcesamiento)}.`, 'ok');
+  mostrarResultado(res);
+};
+
+function alEstadistica(m) {
+  if (m.tipo === 'INICIADO') {
+    $('#btn-hilos').disabled = $('#btn-sin-hilos').disabled = true;
+    $('#est-progreso').classList.remove('oculto');
+    $('#est-hilos').innerHTML = Array.from({ length: m.hilos }, (_, i) =>
+      `<div class="hilo">trabajador ${i + 1} <span id="h-${i}">0%</span><div class="barra"><div id="hb-${i}"></div></div></div>`).join('');
+    $('#est-barra').style.width = '0%';
+  }
+  if (m.tipo === 'PROGRESO') {
+    $('#est-barra').style.width = m.porcentaje + '%';
+    m.porHilo.forEach((p, i) => {
+      const t = document.getElementById('h-' + i), b = document.getElementById('hb-' + i);
+      if (t) { t.textContent = p + '%'; b.style.width = p + '%'; }
+    });
+    if (!$('#est-estado').innerHTML.includes('HTTP')) {
+      estado(`⏳ Procesando en segundo plano (otro cliente lo inició): ${m.porcentaje}% · ${fmt(m.procesados)} de ${fmt(m.total)}`, 'trabajando');
+    }
+  }
+  if (m.tipo === 'COMPLETADO') {
+    detenerSonda();
+    $('#btn-hilos').disabled = $('#btn-sin-hilos').disabled = false;
+    const r = m.resultado;
+    estado(`✔ Procesamiento <b>con ${r.hilos} hilos</b> terminado: cálculo en <b>${seg(r.msProcesamiento)}</b>
+      (carga de datos ${seg(r.msCarga)}, total ${seg(r.msTotal)}) · coordinado por <code>${esc(r.hiloCoordinador)}</code>.`, 'ok');
+    mostrarResultado(r);
+  }
+  if (m.tipo === 'ERROR') {
+    detenerSonda();
+    $('#btn-hilos').disabled = $('#btn-sin-hilos').disabled = false;
+    estado('⚠ Error: ' + esc(m.mensaje));
+  }
+}
+
+function barras(items, max, valor, etiqueta) {
+  return items.map((it) => `<div class="fila-barra"><span title="${esc(etiqueta(it))}">${esc(etiqueta(it))}</span>
+    <div class="b" style="width:${(100 * valor(it) / max).toFixed(1)}%"></div><span>${fmt(valor(it))}</span></div>`).join('');
+}
+
+function mostrarResultado(r) {
+  $('#est-resultado').classList.remove('oculto');
+  $('#r-total').textContent = fmt(r.totalContenidos);
+  $('#r-peliculas').textContent = fmt(r.porTipo.MOVIE || 0);
+  $('#r-series').textContent = fmt(r.porTipo.TV_SHOW || 0);
+  $('#r-min').textContent = r.duracionPromedioPeliculasMin + ' min';
+  $('#r-temp').textContent = r.temporadasPromedioSeries;
+  $('#r-comp').textContent = fmt(r.comparaciones);
+  $('#r-generos').innerHTML = barras(r.porGenero, r.porGenero[0]?.cantidad || 1, (g) => g.cantidad, (g) => g.nombre);
+  const maxAnio = Math.max(1, ...r.porAnio.map((a) => a.peliculas + a.series));
+  $('#r-anios').innerHTML = r.porAnio.map((a) => `<div class="fila-barra"><span>${a.anio}</span>
+    <div class="doble"><div class="b" style="width:${(100 * a.peliculas / maxAnio).toFixed(1)}%" title="películas"></div>
+    <div class="b s" style="width:${(100 * a.series / maxAnio).toFixed(1)}%" title="series"></div></div>
+    <span>${a.peliculas}/${a.series}</span></div>`).join('') + '<p class="nota">azul: películas · ámbar: series</p>';
+  $('#r-similares').innerHTML = r.similares.map((s) => `<tr><td class="titulo">#${s.idA} ${esc(s.tituloA)}</td>
+    <td class="titulo">#${s.idB} ${esc(s.tituloB)}</td><td>${(s.similitud * 100).toFixed(1)}%</td><td>${s.elementosComunes}</td></tr>`).join('');
+  $('#r-detalle').innerHTML = r.detalleHilos.map((h) => `<tr><td><code>${esc(h.hilo)}</code></td><td>${fmt(h.procesados)}</td>
+    <td>${fmt(h.comparaciones)}</td><td>${seg(h.ms)}</td></tr>`).join('');
+}
+
+fetch('api/estadisticas/ultimo').then((r) => (r.status === 200 ? r.json() : null)).then((r) => { if (r) mostrarResultado(r); });
