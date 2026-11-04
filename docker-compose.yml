@@ -1,0 +1,31 @@
+# Base de datos primevideodb (PostgreSQL 16).
+# Al crear el contenedor por primera vez se ejecuta db/01_PrimeVideoDB_PostgreSQL.sql
+name: primevideo
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: primevideodb
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - "5433:5432"
+    volumes:
+      - ./db:/docker-entrypoint-initdb.d:ro
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d primevideodb"]
+      interval: 5s
+      retries: 30
+
+  # Cliente web de base de datos (http://localhost:8081) para verificar la carga
+  adminer:
+    image: adminer:4.8.1
+    ports:
+      - "8081:8080"
+    depends_on:
+      - postgres
+
+volumes:
+  pgdata:

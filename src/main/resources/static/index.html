@@ -1,0 +1,72 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Prime Video CRUD</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<header>
+  <h1><span class="logo">prime video</span> · catálogo <small>tabla content · primevideodb</small></h1>
+  <div class="estado">
+    <span id="actualizado" class="pill">cargado: -</span>
+  </div>
+</header>
+
+<main>
+  <section class="panel">
+    <div class="panel-head">
+      <h2>Contenidos <small id="total"></small></h2>
+      <div class="filtros">
+        <input id="buscar" placeholder="Buscar por título...">
+        <select id="tipo">
+          <option value="">Todos</option>
+          <option value="MOVIE">Películas</option>
+          <option value="TV_SHOW">Series</option>
+          <option value="OTHER">Otros</option>
+        </select>
+        <button id="btn-recargar" class="sec" title="Volver a consultar la base de datos">⟳ Recargar</button>
+        <button id="btn-nuevo">+ Nuevo contenido</button>
+      </div>
+    </div>
+    <div class="scroll">
+      <table class="tabla">
+        <thead><tr><th>ID</th><th>source_id</th><th>Tipo</th><th>Título</th><th>Año</th><th>Rating</th><th>Duración</th><th>Agregado</th><th></th></tr></thead>
+        <tbody id="filas"></tbody>
+      </table>
+    </div>
+    <div class="paginacion">
+      <button id="pag-ant" class="sec">&laquo;</button>
+      <span id="pag-info"></span>
+      <button id="pag-sig" class="sec">&raquo;</button>
+    </div>
+  </section>
+</main>
+
+<dialog id="dlg">
+  <form id="form" method="dialog">
+    <h2 id="dlg-titulo">Nuevo contenido</h2>
+    <input type="hidden" name="id">
+    <div class="grid">
+      <label class="ancho">Título<input name="title" required maxlength="500"></label>
+      <label>Tipo<select name="contentType"><option value="MOVIE">MOVIE</option><option value="TV_SHOW">TV_SHOW</option><option value="OTHER">OTHER</option></select></label>
+      <label>source_id<input name="sourceId" maxlength="20" placeholder="automático (s + id)"></label>
+      <label>Año de estreno<input name="releaseYear" type="number" min="1900" max="2100"></label>
+      <label>Rating<input name="rating" maxlength="30" placeholder="13+, 16+, ALL..."></label>
+      <label>Fecha agregado<input name="dateAdded" type="date"></label>
+      <label>Duración<input name="durationValue" type="number" min="0"></label>
+      <label>Unidad<select name="durationUnit"><option value="MINUTES">MINUTES</option><option value="SEASONS">SEASONS</option><option value="OTHER">OTHER</option></select></label>
+    </div>
+    <label>Descripción<textarea name="description" rows="3" maxlength="2000"></textarea></label>
+    <p id="error" class="error"></p>
+    <div class="acciones">
+      <button type="button" class="sec" id="btn-cancelar">Cancelar</button>
+      <button type="submit">Guardar</button>
+    </div>
+  </form>
+</dialog>
+
+<script src="app.js"></script>
+</body>
+</html>

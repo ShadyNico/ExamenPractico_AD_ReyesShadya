@@ -1,0 +1,24 @@
+server:
+  port: ${PORT:8080}
+
+spring:
+  application:
+    name: primevideo
+  datasource:
+    url: ${DB_URL:jdbc:postgresql://localhost:5433/primevideodb}
+    username: ${DB_USER:postgres}
+    password: ${DB_PASSWORD:postgres}
+  jpa:
+    hibernate:
+      ddl-auto: none            # el esquema lo define el script de primevideodb, no Hibernate
+    open-in-view: false
+  sql:
+    init:
+      mode: always              # schema.sql: secuencia para generar el id de nuevos contenidos
+      continue-on-error: false
+  web:
+    locale: es
+    locale-resolver: fixed
+  mvc:
+    problemdetails:
+      enabled: true
