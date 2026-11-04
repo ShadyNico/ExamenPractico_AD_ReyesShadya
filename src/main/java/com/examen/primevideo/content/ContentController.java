@@ -31,20 +31,24 @@ public class ContentController {
         return service.obtener(id);
     }
 
+    // X-Cliente: identificador del navegador que hace el cambio (se muestra a los demas clientes)
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
-    public ContentResponse crear(@Valid @RequestBody ContentRequest req) {
-        return service.crear(req);
+    public ContentResponse crear(@Valid @RequestBody ContentRequest req,
+                                 @RequestHeader(value = "X-Cliente", required = false) String cliente) {
+        return service.crear(req, cliente);
     }
 
     @PutMapping("/{id}")
-    public ContentResponse actualizar(@PathVariable Integer id, @Valid @RequestBody ContentRequest req) {
-        return service.actualizar(id, req);
+    public ContentResponse actualizar(@PathVariable Integer id, @Valid @RequestBody ContentRequest req,
+                                      @RequestHeader(value = "X-Cliente", required = false) String cliente) {
+        return service.actualizar(id, req, cliente);
     }
 
     @DeleteMapping("/{id}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
-    public void eliminar(@PathVariable Integer id) {
-        service.eliminar(id);
+    public void eliminar(@PathVariable Integer id,
+                         @RequestHeader(value = "X-Cliente", required = false) String cliente) {
+        service.eliminar(id, cliente);
     }
 }

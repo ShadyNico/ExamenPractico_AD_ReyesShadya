@@ -7,6 +7,10 @@ const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '
 let pagina = 0, totalPaginas = 1;
 const resaltar = new Set();
 
+// Identificador de este navegador: viaja en X-Cliente y vuelve en los eventos del WebSocket
+const clienteId = 'cliente-' + Math.random().toString(36).slice(2, 6);
+const conCliente = (opciones = {}) => ({ ...opciones, headers: { ...(opciones.headers || {}), 'X-Cliente': clienteId } });
+
 async function cargar() {
   const params = new URLSearchParams({ pagina, tamanio: 12, buscar: $('#buscar').value, tipo: $('#tipo').value });
   const r = await fetch('api/content?' + params);
@@ -71,7 +75,7 @@ $('#filas').addEventListener('click', async (ev) => {
     abrir(await (await fetch('api/content/' + b.dataset.editar)).json());
   }
   if (b.dataset.eliminar && confirm(`¿Eliminar el contenido #${b.dataset.eliminar}?`)) {
-    const r = await fetch('api/content/' + b.dataset.eliminar, { method: 'DELETE' });
+    const r = await fetch('api/content/' + b.dataset.eliminar, conCliente({ method: 'DELETE' }));
     if (r.ok) cargar();
   }
 });
@@ -82,11 +86,11 @@ $('#form').addEventListener('submit', async (ev) => {
   const id = datos.id;
   delete datos.id;
   for (const k in datos) if (datos[k] === '') datos[k] = null;
-  const r = await fetch('api/content' + (id ? '/' + id : ''), {
+  const r = await fetch('api/content' + (id ? '/' + id : ''), conCliente({
     method: id ? 'PUT' : 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(datos),
-  });
+  }));
   if (r.ok) {
     const c = await r.json();
     resaltar.add(c.id);
@@ -99,3 +103,54 @@ $('#form').addEventListener('submit', async (ev) => {
 });
 
 cargar();
+
+// =====================================================================
+// Etapa 2: WebSocket (STOMP). Los cambios hechos por cualquier cliente
+// llegan aqui sin recargar la pagina.
+// =====================================================================
+$('#yo').textContent = 'cliente: ' + clienteId;
+const wsUrl = (location.protocol === 'https:' ? 'wss://' : 'ws://') + location.host + location.pathname.replace(/[^/]*$/, '') + 'ws';
+const stomp = new StompJs.Client({ brokerURL: wsUrl, reconnectDelay: 3000 });
+
+stomp.onConnect = () => {
+  $('#ws-estado').textContent = 'WebSocket conectado';
+  $('#ws-estado').className = 'pill on';
+  stomp.subscribe('/topic/content', (m) => alCambio(JSON.parse(m.body)));
+  stomp.subscribe('/topic/clientes', (m) => mostrarClientes(JSON.parse(m.body)));
+  fetch('api/clientes').then((r) => r.json()).then(mostrarClientes);
+  cargar();                                            // al (re)conectar se sincroniza el estado
+};
+stomp.onWebSocketClose = () => {
+  $('#ws-estado').textContent = 'WebSocket desconectado';
+  $('#ws-estado').className = 'pill off';
+};
+stomp.activate();
+
+const mostrarClientes = (d) => { $('#clientes').textContent = 'clientes conectados: ' + d.conectados; };
+
+const verbos = { CREADO: 'registró', ACTUALIZADO: 'editó', ELIMINADO: 'eliminó' };
+
+function alCambio(e) {
+  const propio = e.cliente === clienteId;
+  const quien = propio ? 'Este cliente' : (e.cliente || 'Otro cliente');
+  const titulo = e.contenido ? `"${e.contenido.title}"` : '';
+  const li = document.createElement('li');
+  li.innerHTML = `<span class="tag ${esc(e.accion)}">${esc(e.accion)}</span>
+    <span><b>${esc(quien)}</b> ${verbos[e.accion]} el contenido #${e.id} ${esc(titulo)}</span>
+    <span class="nota">${new Date(e.timestamp).toLocaleTimeString('es')}</span>`;
+  const lista = $('#eventos');
+  lista.querySelector('.vacio')?.remove();
+  lista.prepend(li);
+  if (!propio) avisar(`${quien} ${verbos[e.accion]} #${e.id} ${titulo}`);
+  if (e.accion !== 'ELIMINADO') resaltar.add(e.id);
+  recargar();
+}
+
+let tAviso;
+function avisar(texto) {
+  const a = $('#aviso');
+  a.textContent = '🔔 ' + texto;
+  a.classList.add('visible');
+  clearTimeout(tAviso);
+  tAviso = setTimeout(() => a.classList.remove('visible'), 4000);
+}

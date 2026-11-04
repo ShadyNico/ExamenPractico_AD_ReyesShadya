@@ -3,7 +3,9 @@ package com.examen.primevideo.content;
 import com.examen.primevideo.content.ContentDtos.ContentRequest;
 import com.examen.primevideo.content.ContentDtos.ContentResponse;
 import com.examen.primevideo.content.ContentDtos.Pagina;
+import com.examen.primevideo.websocket.ContentEvento;
 import jakarta.persistence.EntityManager;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
@@ -20,10 +22,12 @@ public class ContentService {
 
     private final ContentRepository repo;
     private final EntityManager em;
+    private final ApplicationEventPublisher eventos;
 
-    public ContentService(ContentRepository repo, EntityManager em) {
+    public ContentService(ContentRepository repo, EntityManager em, ApplicationEventPublisher eventos) {
         this.repo = repo;
         this.em = em;
+        this.eventos = eventos;
     }
 
     @Transactional(readOnly = true)
@@ -39,7 +43,7 @@ public class ContentService {
         return ContentResponse.de(buscar(id));
     }
 
-    public ContentResponse crear(ContentRequest req) {
+    public ContentResponse crear(ContentRequest req, String cliente) {
         Content c = new Content();
         c.setId((int) repo.siguienteId());
         copiar(req, c);
@@ -48,22 +52,32 @@ public class ContentService {
         }
         validarSourceId(c);
         em.persist(c);
-        return ContentResponse.de(c);
+        ContentResponse res = ContentResponse.de(c);
+        publicar("CREADO", res.id(), res, cliente);
+        return res;
     }
 
-    public ContentResponse actualizar(Integer id, ContentRequest req) {
+    public ContentResponse actualizar(Integer id, ContentRequest req, String cliente) {
         Content c = buscar(id);
         copiar(req, c);
         if (c.getSourceId() == null) {
             c.setSourceId("s" + id);
         }
         validarSourceId(c);
-        return ContentResponse.de(c);
+        ContentResponse res = ContentResponse.de(c);
+        publicar("ACTUALIZADO", id, res, cliente);
+        return res;
     }
 
-    public void eliminar(Integer id) {
+    public void eliminar(Integer id, String cliente) {
         // content_person, content_genre y content_country se eliminan por ON DELETE CASCADE
         repo.delete(buscar(id));
+        publicar("ELIMINADO", id, null, cliente);
+    }
+
+    /** El evento se envia por WebSocket cuando la transaccion hace COMMIT (NotificadorWebSocket). */
+    private void publicar(String accion, Integer id, ContentResponse contenido, String cliente) {
+        eventos.publishEvent(new ContentEvento(accion, id, contenido, cliente, System.currentTimeMillis()));
     }
 
     private Content buscar(Integer id) {
